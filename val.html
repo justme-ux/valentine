@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<title>Be my val?</title>
+	<style>
+		:root{--bg:#ffedf0;--card:#fff;--accent:#ff4d7a}
+		html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+		body{display:grid;place-items:center;background:linear-gradient(180deg,#fff 0%,var(--bg) 100%);}
+		.card{width:min(720px,92vw);background:var(--card);border-radius:18px;padding:36px;box-shadow:0 10px 30px rgba(0,0,0,.12);text-align:center;position:relative}
+		h1{margin:0 0 10px;font-size:28px;color:#222}
+		p.lead{margin:0 0 18px;color:#444}
+		.question{font-size:20px;margin:14px 0 26px}
+		.btns{display:flex;gap:16px;justify-content:center}
+		button{padding:12px 20px;border-radius:10px;border:0;font-size:16px;cursor:pointer}
+		button.yes{background:var(--accent);color:#fff;box-shadow:0 6px 18px rgba(255,77,122,.28)}
+		button.no{background:#fff;color:var(--accent);border:2px solid var(--accent)}
+		.small{font-size:13px;color:#777;margin-top:8px}
+		/* hearts background */
+		.hearts{position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:18px}
+		.heart{position:absolute;width:14px;height:14px;background:var(--accent);transform:rotate(-45deg);left:50%;top:50%;opacity:.9}
+		.heart:before,.heart:after{content:'';position:absolute;width:14px;height:14px;background:var(--accent);border-radius:50%}
+		.heart:before{top:-7px;left:0}
+		.heart:after{left:7px;top:0}
+		.celebrate{display:none;margin-top:18px;color:var(--accent);font-weight:600}
+		@keyframes floatUp{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-120px) scale(.7);opacity:0}}
+	</style>
+</head>
+<body>
+	<div class="card" role="main" aria-labelledby="title">
+		<div class="hearts" id="hearts" aria-hidden="true"></div>
+		<h1 id="title">A small question…</h1>
+		<p class="lead">I made this just for you.</p>
+		<div class="question" id="question">Will you be my val?</div>
+
+		<div class="btns" id="btns">
+			<button class="yes" id="yesBtn">Yes 💖</button>
+			<button class="no" id="noBtn">No</button>
+		</div>
+
+		<div class="small" id="hint">Click one — your answer matters.</div>
+		<div class="celebrate" id="celebrate">Yay! You said YES! 💘</div>
+	</div>
+
+	<script>
+		const questionEl = document.getElementById('question');
+		const yesBtn = document.getElementById('yesBtn');
+		const noBtn = document.getElementById('noBtn');
+		const celebrate = document.getElementById('celebrate');
+		const heartsContainer = document.getElementById('hearts');
+
+		// messages shown each time No is clicked (cycles)
+		const nudgeMessages = [
+			"Are you sure? I promise I'll bring your favorite flowers.",
+			"Please? I'll make you breakfast in bed.",
+			"Just one yes? I'll sing for you (off-key).",
+			"I can't stop thinking about you. Give me a chance?",
+			"Pretty please? I'll do the dishes for a week."
+		];
+
+		let noCount = 0;
+
+		function randomInt(min,max){return Math.floor(Math.random()*(max-min+1))+min}
+
+		function floatHeart(x,y){
+			const h = document.createElement('div');
+			h.className = 'heart';
+			h.style.left = x + 'px';
+			h.style.top = y + 'px';
+			heartsContainer.appendChild(h);
+			const dur = 1800 + Math.random()*1200;
+			h.style.transition = `transform ${dur}ms linear, opacity ${dur}ms linear`;
+			requestAnimationFrame(()=>{
+				h.style.transform = 'translateY(-120px) scale(.6)';
+				h.style.opacity = '0';
+			});
+			setTimeout(()=>h.remove(), dur+50);
+		}
+
+		noBtn.addEventListener('click', (e)=>{
+			noCount++;
+			// update the question to a nudge message (cycle through array)
+			const idx = (noCount-1) % nudgeMessages.length;
+			questionEl.textContent = nudgeMessages[idx];
+
+			// create a heart near the button for fun
+			const rect = e.target.getBoundingClientRect();
+			floatHeart(rect.left + rect.width/2 - heartsContainer.getBoundingClientRect().left,
+								rect.top + rect.height/2 - heartsContainer.getBoundingClientRect().top);
+
+			// move the No button to a nearby random position inside the card (playful persistence)
+			const parentRect = document.querySelector('.card').getBoundingClientRect();
+			const btnW = rect.width, btnH = rect.height;
+			const maxX = parentRect.width - btnW - 36; // padding
+			const maxY = parentRect.height - btnH - 36;
+			// choose a new position biased away from center the more times No is clicked
+			const bias = Math.min(noCount, 12);
+			const newX = Math.max(8, Math.min(maxX, randomInt(8, maxX) + (bias* (Math.random()>0.5?1:-1))*6));
+			const newY = Math.max(8, Math.min(maxY, randomInt(8, maxY)));
+
+			// apply absolute positioning to the button container so it can move
+			const btns = document.getElementById('btns');
+			btns.style.position = 'relative';
+			noBtn.style.position = 'absolute';
+			noBtn.style.left = newX + 'px';
+			noBtn.style.top = newY + 'px';
+
+			// gentle hint after a few nos
+			const hint = document.getElementById('hint');
+			if(noCount >= 3) hint.textContent = "I'm being a bit persistent, but I'll keep asking until you say yes...";
+			if(noCount >= 8) hint.textContent = "Okay last try? (But really, one YES would make my day)";
+		});
+
+		yesBtn.addEventListener('click', ()=>{
+			// reveal celebration
+			celebrate.style.display = 'block';
+			questionEl.textContent = "You made me the happiest — thank you!";
+			document.getElementById('hint').textContent = "Let's celebrate 💕";
+			// hide buttons
+			yesBtn.style.display = 'none';
+			noBtn.style.display = 'none';
+			// sprinkle a few hearts
+			const cardRect = document.querySelector('.card').getBoundingClientRect();
+			for(let i=0;i<14;i++){
+				setTimeout(()=>{
+					const x = randomInt(20, cardRect.width-40);
+					const y = randomInt(20, cardRect.height-40);
+					floatHeart(x,y);
+				}, i*80);
+			}
+		});
+
+		// Accessibility: allow keyboard pressing Y or N
+		window.addEventListener('keydown', (ev)=>{
+			if(ev.key.toLowerCase() === 'y') yesBtn.click();
+			if(ev.key.toLowerCase() === 'n') noBtn.click();
+		});
+	</script>
+</body>
+</html>
